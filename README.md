@@ -68,4 +68,4 @@ devops/              contenedor y compose
 Las dependencias van `infrastructure → application → domain`, nunca al revés.
 
 
-s3_AIE_39DM : Se realiza la ingesta del corpus
+s3_AIE_39DM : Se realiza la ingesta del corpus y base vectorial local
