@@ -67,3 +67,29 @@ unrecognized-charges-procedure.md          175  Procedimiento ante cargos no rec
 unrecognized-charges-procedure.md          273  Procedimiento ante cargos no reconocidos > Paso 2: revisar los movimientos
 unrecognized-charges-procedure.md          284  Procedimiento ante cargos no reconocidos > Paso 3: registrar el reclamo
 unrecognized-charges-procedure.md          244  Procedimiento ante cargos no reconocidos > Paso 4: seguimiento
+
+## Semana 2 - Validación de recuperación y citas
+
+| Caso | Pregunta | Intención | Fuente observada | ¿Fuente correcta? | Primer texto | Respuesta completa |
+| --- | --- | --- | --- | --- | ---: | ---: |
+| Regla del corpus | ¿Cuál es el plazo para presentar un reclamo? | `product_question` | `claims-regulation.pdf` — 3.1 Plazo para presentar | Sí | 4959 ms | 5081 ms |
+| Seguimiento | ¿y si es por fraude? | `product_question` | `claims-regulation.pdf` — 3.1 Plazo para presentar; `fraud-and-claims-faq.md` — ¿Cuánto tiempo tengo para reclamar un cargo? | Sí | 9791 ms | 9922 ms |
+| Término exacto | ¿Qué es un contracargo? | `product_question` | `credit-card-chargebacks.html` — Qué es un contracargo; `fraud-glossary.md` — Contracargo | Sí | 4615 ms | 4756 ms |
+| Documento vencido | ¿Qué decía la política de bloqueo de 2022? | `product_question` | `card-blocking-policy.docx` (política vigente); no citó `card-blocking-policy-2022.md` | Sí | 6188 ms | 6464 ms |
+| Fuera del corpus | ¿A cuánto está el dólar hoy? | `out_of_scope` | Sin fuentes | Sí | 4263 ms | 4414 ms |
+
+Resultado: 5 de 5 casos cumplieron el criterio de intención y procedencia de las fuentes. Cada dato de producto incluyó una fuente; la consulta fuera del corpus no incluyó fuentes.
+
+## Semana 2 - Comparación local vs. Azure AI Search
+
+Corrida del 6 de noviembre de 2026 con 51 chunks y `SEARCH_TOP_K=5`. La búsqueda local usa BM25, vectores y Reciprocal Rank Fusion; Azure AI Search usa búsqueda híbrida y reranking semántico. La segunda pregunta se hizo en la misma sesión que la primera en ambos backends; los demás casos se ejecutaron en sesiones nuevas.
+
+| **Pregunta** | **Fuentes en local** | **Fuentes en AI Search** | **¿Mejoró con el reranker?** | **respuesta completa en (local / AI Search)** |
+| :----------- | :------------------- | :----------------------- | :--------------------------- | :-------------------------------------------- |
+| ¿Cuál es el plazo para presentar un reclamo? | `claims-regulation.pdf` — 3.1 Plazo para presentar | `claims-regulation.pdf` — 3.1 Plazo para presentar | No se observó diferencia: misma fuente relevante. | 6962 ms / 8667 ms |
+| ¿y si es por fraude? | `claims-regulation.pdf` — 3.1 Plazo para presentar y 4. Plazos de respuesta; `fraud-and-claims-faq.md` — ¿En cuánto tiempo me responden?; `claims-regulation.pdf` — 4.2 Excepciones | `claims-regulation.pdf` — 3.1 Plazo para presentar y 4. Plazos de respuesta; `fraud-and-claims-faq.md` — ¿En cuánto tiempo me responden? | Sí: conservó las tres fuentes centrales y eliminó la fuente secundaria 4.2, haciendo la respuesta más enfocada. | 12962 ms / 21112 ms |
+| ¿Qué es un contracargo? | `credit-card-chargebacks.html` — Qué es un contracargo; `fraud-glossary.md` — Contracargo | `credit-card-chargebacks.html` — Qué es un contracargo; `fraud-glossary.md` — Contracargo | No se observó diferencia: mismas fuentes relevantes. | 3875 ms / 6264 ms |
+| ¿Qué decía la política de bloqueo de 2022? | Cinco secciones de `card-blocking-policy.docx`; no citó el documento vencido | Las mismas cinco secciones de `card-blocking-policy.docx`; no citó el documento vencido | No se observó mejora: el resultado fue equivalente y correcto. | 7058 ms / 8711 ms |
+| ¿A cuánto está el dólar hoy? | Sin fuentes (`out_of_scope`) | Sin fuentes (`out_of_scope`) | No aplica: no se ejecutó recuperación de información del corpus. | 3887 ms / 4681 ms |
+
+Conclusión: AI Search mantuvo o mejoró la relevancia de las fuentes en los cinco casos, pero no mejoró la latencia en esta corrida. La mejora cualitativa del reranker fue visible en el seguimiento; en los demás casos la recuperación fue equivalente a la búsqueda local.
