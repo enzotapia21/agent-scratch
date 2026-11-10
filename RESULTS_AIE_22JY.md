@@ -1,16 +1,18 @@
-# Resultados — AIE-22JY
+# Resultados de experimentos — AIE-22JY
 
-## Paso 11 · Chat contra Foundry
+## Tamaño de chunk
 
-| Caso | Pregunta | Intención | Fuente observada | ¿Fuente correcta? | Primer texto en | Respuesta completa en |
-| --- | --- | --- | --- | --- | ---: | ---: |
-| Regla del corpus | ¿Cuál es el plazo para presentar un reclamo? | `product_question` | `claims-regulation.pdf` — 3.1 Plazo para presentar | Sí | 4959 ms | 5081 ms |
-| Seguimiento | ¿y si es por fraude? | `product_question` | `claims-regulation.pdf` — 3.1 Plazo para presentar; `fraud-and-claims-faq.md` — ¿Cuánto tiempo tengo para reclamar un cargo? | Sí | 9791 ms | 9922 ms |
-| Término exacto | ¿Qué es un contracargo? | `product_question` | `credit-card-chargebacks.html` — Qué es un contracargo; `fraud-glossary.md` — Contracargo | Sí | 4615 ms | 4756 ms |
-| Documento vencido | ¿Qué decía la política de bloqueo de 2022? | `product_question` | `card-blocking-policy.docx` (política vigente); no citó `card-blocking-policy-2022.md` | Sí | 6188 ms | 6464 ms |
-| Fuera del corpus | ¿A cuánto está el dólar hoy? | `out_of_scope` | Sin fuentes | Sí | 4263 ms | 4414 ms |
+| `INGEST_CHUNK_MAX_CHARS` | Chunks generados | Observación |
+| ---: | ---: | --- |
+| 1500 | 51 | Más contexto dentro de cada fragmento. |
+| 250 | 66 | Fragmentos más enfocados y precisos, pero con menos contexto compartido. |
 
-### Resultado
+### Resultado y decisión
 
-Los cinco casos cumplieron el criterio esperado de intención y procedencia de las fuentes. Cada respuesta sobre el producto incluyó una fuente válida, la consulta sobre el documento vencido no citó `card-blocking-policy-2022.md` y la pregunta fuera del corpus no incluyó fuentes.
+Con un máximo de **250 caracteres** se generaron **66 chunks**, frente a los **51 chunks** de la configuración base de **1500 caracteres**.
+
+- **Qué se gana:** precisión en la recuperación, porque cada chunk tiende a tratar una sola regla o tema.
+- **Qué se pierde:** contexto, porque una regla, su condición y su excepción pueden quedar en fragmentos distintos.
+- **Observación del corpus:** al revisar `dev/show_chunks.py`, se vio que algunas secciones de `claims-regulation.pdf`, como “Abono provisional” y distintas reglas con sus excepciones, quedaron partidas en más de un chunk. También `response-times.csv` pasó a varios fragmentos pequeños.
+- **Configuración restaurada:** se vuelve a construir y publicar el índice con el valor base del equipo, **1500 caracteres**, hasta medir el efecto con evaluaciones de preguntas reales.
 

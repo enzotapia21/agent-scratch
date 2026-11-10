@@ -66,3 +66,22 @@ devops/              contenedor y compose
 ```
 
 Las dependencias van `infrastructure → application → domain`, nunca al revés.
+
+
+s3_AIE_39DM : Se realiza la ingesta del corpus y base vectorial local
+
+# Semana 2 - Sesión 4 - s4_AIE_12ET
+1. Búsqueda Híbrida y Fusión de Rankings (Híbrida + RRF)
+- Combinación de enfoques: Se implementa una estrategia dual que une la búsqueda por significado (vectores con Qdrant o Azure AI Search) con la búsqueda exacta por palabras clave (BM25)
+- Reciprocal Rank Fusion (RRF): Permite unificar los resultados de ambos "jueces" (significado y palabras) basándose en las posiciones de los fragmentos, garantizando que los documentos más relevantes y precisos asciendan al primer lugar.
+
+2. Reescribir Preguntas y Control de Vigencia
+- Contexto de seguimiento: Gracias al módulo de reescritura (QueryRewriter), si haces una pregunta ambigua o de seguimiento (ejem: como "¿y si es fraude?"), el modelo la transforma automáticamente en una pregunta completa y autocontenida antes de buscar en la biblioteca.
+- Filtros de vigencia: El sistema/aplicación excluye de forma nativa los documentos o reglamentos vencidos antes de realizar la búsqueda (valid_until), evitando por completo que información obsoleta contamine o llegue a la respuesta final del usuario.
+
+3. Fuentes Verificables y Streaming Eficiente
+- Citas sin invenciones: El modelo de lenguaje solo selecciona los números identificadores de los fragmentos provistos en el contexto ([1], [2]), y el código del agente valida rigurosamente que correspondan a un documento existente para descartar cualquier alucinación o cita inventada.
+- Experiencia de usuario con Streaming: Utilizando Server-Sent Events (SSE) y herramientas de lectura parcial de JSON, la respuesta no llega de golpe, sino que aparece palabra por palabra reduciendo drásticamente la latencia percibida (el primer texto se muestra en menos de medio segundo).
+
+
+s4_AIE_39DM : Foundry (chat + embeddings) con Entra ID + Qdrant local para desarrollar + Azure AI Search para cerrar

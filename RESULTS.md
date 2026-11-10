@@ -1,4 +1,4 @@
-# Semana 2 - Sesión 03 - Paso 11·Experimentar con el tamaño de chunk#
+# Semana 2 - Sesión 03 - Paso 11·Experimentar con el tamaño de chunk #
 
 C:\labs\agent-scratch> uv run python dev/show_chunks.py
 card-blocking-policy-2022.md               203  Política de bloqueo de tarjetas (versión 2022) > Canales de bloqueo
