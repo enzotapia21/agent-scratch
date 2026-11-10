@@ -82,3 +82,6 @@ s3_AIE_39DM : Se realiza la ingesta del corpus y base vectorial local
 3. Fuentes Verificables y Streaming Eficiente
 - Citas sin invenciones: El modelo de lenguaje solo selecciona los números identificadores de los fragmentos provistos en el contexto ([1], [2]), y el código del agente valida rigurosamente que correspondan a un documento existente para descartar cualquier alucinación o cita inventada.
 - Experiencia de usuario con Streaming: Utilizando Server-Sent Events (SSE) y herramientas de lectura parcial de JSON, la respuesta no llega de golpe, sino que aparece palabra por palabra reduciendo drásticamente la latencia percibida (el primer texto se muestra en menos de medio segundo).
+
+
+s4_AIE_39DM : Foundry (chat + embeddings) con Entra ID + Qdrant local para desarrollar + Azure AI Search para cerrar
