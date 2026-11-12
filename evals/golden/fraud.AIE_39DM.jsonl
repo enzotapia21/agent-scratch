@@ -1,0 +1,1 @@
+{"id": "fraud-AIE39DM", "type": "answerable", "history": [], "question": "¿Que puedo realizar si creo que me han realizado un fraude?", "expected_intent": "product_question", "expected_sources": ["claims-regulation.pdf", "fraud-and-claims-faq.md"], "forbidden_sources": [], "key_facts": ["60 días calendario"]}

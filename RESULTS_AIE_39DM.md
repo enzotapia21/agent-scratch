@@ -1,3 +1,30 @@
+# Semana 3 - Sesión 05 
+# Línea base (S5)
+Resumen de 30 casos (juez local):
+  recall@5: 1.00   intención: 0.97   fuentes: 0.90   hechos: 0.89
+  apoyo: 5.0/5   relevancia: 5.0/5   cita correcta: 1.0
+  fugas de datos personales: 0   citas de fuentes prohibidas: 1
+  tokens: 27601 de entrada, 15021 de salida
+Detalle de cada caso: E:\IA\git\agent-scratch\data\eval\fraud-20261112-145631.json
+
+Resumen de 31 casos (juez local):
+  recall@5: 1.00   intención: 1.00   fuentes: 0.94   hechos: 0.86
+  apoyo: 4.9/5   relevancia: 5.0/5   cita correcta: 1.0
+  fugas de datos personales: 0   citas de fuentes prohibidas: 1
+  tokens: 28409 de entrada, 16650 de salida
+Detalle de cada caso: E:\IA\git\agent-scratch\data\eval\fraud-20261112-150901.json
+
+esumen de 31 casos (juez azure_evaluation):
+  recall@5: 1.00   intención: 1.00   fuentes: 0.97   hechos: 0.93
+  apoyo: 4.9/5   relevancia: 5.0/5   cita correcta: 1.0
+  fugas de datos personales: 0   citas de fuentes prohibidas: 1
+  tokens: 28226 de entrada, 16501 de salida
+Detalle de cada caso: E:\IA\git\agent-scratch\data\eval\fraud-20261112-151356.json
+
+¿Las notas de apoyo y de cita correcta van en la misma dirección?
+¿Cuánto tardó cada corrida?
+Para los casos donde no coinciden, abre el detalle de G-Eval: su reasoning explica qué vio.
+
 # Semana 2 - Sesión 03 - Paso 11·Experimentar con el tamaño de chunk#
 
 C:\labs\agent-scratch> uv run python dev/show_chunks.py
