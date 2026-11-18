@@ -60,3 +60,31 @@
 
 * **¿Las notas de `apoyo` y de `cita correcta` van en la misma dirección?**
   **Sí, van completamente en la misma dirección.** En ambas corridas tanto `apoyo` (`5.0/5`) como `cita correcta` (`1.0`) alcanzan el puntaje máximo[cite: 7]. Esto confirma que ambos jueces coinciden en que el agente fundamenta sus respuestas estrictamente en los fragmentos recuperados y atribuye correctamente las fuentes sin inventar información[cite: 7].
+
+## Sesión 6 — Tools del MCP en el chat
+
+Dominio: `fraud`. MCP: el mock (`http://127.0.0.1:8200/mcp`) y, si ya tienes `MCP_URL`, el compartido (`bank-mcp`).
+
+### Tools de tu dominio
+
+| MCP | Tools que lista `dev/mcp/mcp_tools.py` |
+|---|---|
+| Mock | block_card (acción sensible), file_claim (acción sensible), get_claim_status (consulta), get_transactions (consulta) |
+| Compartido | block_card (acción sensible), file_claim (acción sensible), get_claim_status (consulta), get_transactions (consulta) |
+
+### Conversación en `dev/chat.py` (paso 12)
+
+| Prueba | Mensaje | Tool pedida (`→`) | Qué pasó | Primer texto / respuesta completa (ms) |
+|---|---|---|---|---|
+| Consulta de tu dominio | Soy CUS-1001, me cobraron dos veces en el supermercado. | get_transactions(customer_id=CUS-1001, limit=10) | Invocación correcta de la Tool MCP. El agente interpretó de forma precisa la intención y decidió llamar a la herramienta correspondiente proporcionada por el servidor MCP, pasando los argumentos correctos. Adicionalmente, brindo una respuesta conversacional clara y orientada al cliente. | 27720 ms / 28060 ms |
+| Acción confirmada | Sí, registra el reclamo por el cargo duplicado | file_claim (customer_id=CUS-1001, transaction_id=TRX-3001, TRX-3002) | El agente intentó registrar el reclamo por cargos duplicados, pero por seguridad quedó pendiente de aprobación humana, informando pasos y fuentes documentales. | 38623 ms / 38915 ms |
+| Sin tool que la resuelva | ¿Cuál es el saldo de mi cuenta de ahorros? | out_of_scope | El agente indica que la consulta esta fuera del alcance de este servicio y no invento un monto. Dio la opción de ver saldos en diferentes canales. | 7095 ms / 7269 ms |
+| Tool de otro dominio | ¿Cuánto pagaría al mes por un préstamo de 20000 soles a 24 meses? | out_of_scope | El agente indica que la consulta esta fuera del alcance de este servicio. Dio la opción de simular cuotas de un prestamo en diferentes canales. | 16181 ms / 16573 ms |
+
+### ¿El modelo inventó algún dato cuando ninguna tool lo resolvía?
+
+No. Respondió correctamente sin invención de datos. Respeto los limítes de sus dominio. Adicionalmente, ante preguntas fuera de su alcance o sensibles, dio alternativas de donde verlos.
+
+### Conclusión
+
+El agente respeta estrictamente los límites de su dominio, clasificando correctamente las consultas propias (fraudes) y externas (saldos y préstamos) como out_of_scope. Esto evita alucinaciones o cálculos no autorizados, manteniendo una buena experiencia al redirigir al usuario hacia los canales oficiales del banco. Adicionalmente, reconoció que ciertos procedimientos requiere de confirmación de aprobación humana. 
