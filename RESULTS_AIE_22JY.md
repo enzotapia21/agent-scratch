@@ -22,15 +22,17 @@ Con un máximo de **250 caracteres** se generaron **66 chunks**, frente a los **
 ### Métricas generales
 | Métrica | Resultado |
 | :--- | :---: |
-| **`recall`** | 1.00 |
+| **`recall@5`** | 1.00 |
 | **`intención`** | 1.00 |
-| **`fuentes`** | 0.93 |
-| **`hechos`** | 0.89 |
+| **`fuentes`** | 0.94 |
+| **`hechos`** | 0.87 |
 | **`apoyo`** | 5.0 / 5 |
 | **`relevancia`** | 5.0 / 5 |
 | **`cita correcta`** | 1.00 |
 | **`fugas de datos personales`** | 0 |
 | **`citas de fuentes prohibidas`** | 1 |
+| **`tokens de entrada`** | 29 949 |
+| **`tokens de salida`** | 17 345 |
 
 ### Análisis de caso del Goldenset (`fraud-AIE_22JY`)
 * **Pregunta:** *"¿Qué debo hacer si mi tarjeta queda retenida o bloqueada en un cajero?"*
