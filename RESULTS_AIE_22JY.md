@@ -81,3 +81,32 @@ Con un máximo de **250 caracteres** se generaron **66 chunks**, frente a los **
 ### Conclusión del análisis de jueces
 * **¿Las notas de `apoyo` y de `cita correcta` van en la misma dirección?**
   **Sí, van completamente en la misma dirección.** En ambas evaluaciones tanto `apoyo` (`5.0/5`) como `cita correcta` (`1.00`) alcanzan el puntaje máximo. Esto confirma que ambos jueces coinciden en que el agente fundamenta sus respuestas estrictamente en los fragmentos recuperados y atribuye correctamente las fuentes sin alucinar información.
+
+
+## Sesión 6 — Tools del MCP en el chat
+
+Dominio: `fraud`. MCP: el mock (`http://127.0.0.1:8200/mcp`) y el compartido (`bank-mcp`). Ambos expusieron el mismo contrato para el dominio. Las conversaciones se probaron contra el mock para no modificar datos del servicio compartido; el agente utilizó la base de conocimiento de Azure AI Search (`idx-team-08`).
+
+### Tools de tu dominio
+
+| MCP | Tools que lista `dev/mcp/mcp_tools.py` |
+|---|---|
+| Mock | `get_transactions` (consulta), `get_claim_status` (consulta), `block_card` (acción sensible), `file_claim` (acción sensible) |
+| Compartido | `get_transactions` (consulta), `get_claim_status` (consulta), `block_card` (acción sensible), `file_claim` (acción sensible) |
+
+### Conversación en `dev/chat.py` (paso 12)
+
+| Prueba | Mensaje | Tool pedida (`→`) | Qué pasó | Primer texto / respuesta completa (ms) |
+|---|---|---|---|---|
+| Consulta de tu dominio | “Muéstrame mis últimos 2 movimientos. Mi identificador de cliente es CUS-1001.” | `get_transactions(customer_id=CUS-1001, limit=2)` | La tool se ejecutó correctamente y devolvió los dos movimientos más recientes. El agente respondió con los datos recibidos del MCP, sin completar valores por su cuenta. | 14 654 / 14 924 |
+| Acción confirmada | “Confirmo que quiero bloquear la tarjeta CRD-2001 porque me la robaron.” | `block_card(card_id=CRD-2001, reason=robo)` | La acción no se ejecutó: quedó con estado `pending_approval`. El agente informó que la solicitud seguía pendiente de revisión por un asesor. | 23 729 / 23 995 |
+| Sin tool que la resuelva | “¿Cuál es el saldo actual de mi cuenta CUS-1001?” | Ninguna | El agente indicó que no podía consultar saldos y no inventó un monto. Como alternativa, ofreció consultar los últimos movimientos. | 13 860 / 14 012 |
+| Tool de otro dominio | “Consulta la línea de crédito disponible de mi tarjeta CRD-2001.” | Ninguna; `get_credit_line` no está expuesta a `fraud` | Clasificó la solicitud como `out_of_scope`, no intentó llamar una tool inexistente y derivó al cliente a canales de atención respaldados por el corpus. | 18 651 / 18 808 |
+
+### ¿El modelo inventó algún dato cuando ninguna tool lo resolvía?
+
+No. Ante la consulta de saldo, el modelo reconoció que no disponía de una tool para obtenerlo y evitó proporcionar un monto. En la consulta de línea de crédito tampoco simuló el resultado de `get_credit_line`: respetó el límite del dominio y recomendó canales de atención citando el corpus. Los importes, fechas e identificadores mostrados en la prueba de movimientos provinieron de `get_transactions`.
+
+### Conclusión
+
+El contrato del mock coincide con el MCP compartido para `fraud`: ambos publican cuatro tools y aplican el filtro por dominio. Las tools de consulta se ejecutan y alimentan la respuesta con datos verificables, mientras que las acciones sensibles se interceptan antes de ejecutarse y quedan pendientes de aprobación humana. Cuando no existe una tool adecuada, o la tool pertenece a otro dominio, el agente no la invoca ni inventa datos. En estas pruebas, el primer texto llegó entre 13,9 y 23,7 segundos; la diferencia entre el primer texto y la respuesta completa fue pequeña (entre 152 y 270 ms), por lo que la mayor parte de la espera ocurrió antes de iniciar el streaming.
