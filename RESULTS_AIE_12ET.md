@@ -60,3 +60,76 @@
 
 * **¿Las notas de `apoyo` y de `cita correcta` van en la misma dirección?**
   **Sí, van completamente en la misma dirección.** En ambas corridas tanto `apoyo` (`5.0/5`) como `cita correcta` (`1.0`) alcanzan el puntaje máximo[cite: 7]. Esto confirma que ambos jueces coinciden en que el agente fundamenta sus respuestas estrictamente en los fragmentos recuperados y atribuye correctamente las fuentes sin inventar información[cite: 7].
+
+  ## Sesión 6 — Tools del MCP en el chat
+
+Dominio: `fraud`. MCP: el mock (`http://127.0.0.1:8200/mcp`) y, si ya tienes `MCP_URL`, el compartido (`bank-mcp`).
+
+### Tools de tu dominio
+
+| MCP | Tools que lista `dev/mcp/mcp_tools.py` |
+|---|---|
+| Mock | block_card (acción sensible), file_claim (acción sensible), get_claim_status (consulta), get_transactions (consulta) |
+| Compartido | block_card (acción sensible), file_claim (acción sensible), get_claim_status (consulta), get_transactions (consulta) |
+
+### Conversación en `dev/chat.py` (paso 12)
+
+| Prueba | Mensaje | Tool pedida (`→`) | Qué pasó | Primer texto / respuesta completa (ms) |
+|---|---|---|---|---|
+| Consulta de tu dominio | Soy CUS-1001, me cobraron dos veces en el supermercado. | get_transactions(customer_id=CUS-1001, limit=10) | Invocación correcta de la Tool MCP. El agente interpretó de forma precisa la intención y decidió llamar a la herramienta correspondiente proporcionada por el servidor MCP, pasando los argumentos correctos. Adicionalmente, brindo una respuesta conversacional clara y orientada al cliente. | 27720 ms / 28060 ms |
+| Acción confirmada | Sí, registra el reclamo por el cargo duplicado | file_claim (customer_id=CUS-1001, transaction_id=TRX-3001, TRX-3002) | El agente intentó registrar el reclamo por cargos duplicados, pero por seguridad quedó pendiente de aprobación humana, informando pasos y fuentes documentales. | 38623 ms / 38915 ms |
+| Sin tool que la resuelva | ¿Cuál es el saldo de mi cuenta de ahorros? | out_of_scope | El agente indica que la consulta esta fuera del alcance de este servicio y no invento un monto. Dio la opción de ver saldos en diferentes canales. | 7095 ms / 7269 ms |
+| Tool de otro dominio | ¿Cuánto pagaría al mes por un préstamo de 20000 soles a 24 meses? | out_of_scope | El agente indica que la consulta esta fuera del alcance de este servicio. Dio la opción de simular cuotas de un prestamo en diferentes canales. | 16181 ms / 16573 ms |
+
+### ¿El modelo inventó algún dato cuando ninguna tool lo resolvía?
+
+No. Respondió correctamente sin invención de datos. Respeto los limítes de sus dominio. Adicionalmente, ante preguntas fuera de su alcance o sensibles, dio alternativas de donde verlos.
+
+### Conclusión
+
+El agente respeta estrictamente los límites de su dominio, clasificando correctamente las consultas propias (fraudes) y externas (saldos y préstamos) como out_of_scope. Esto evita alucinaciones o cálculos no autorizados, manteniendo una buena experiencia al redirigir al usuario hacia los canales oficiales del banco. Adicionalmente, reconoció que ciertos procedimientos requiere de confirmación de aprobación humana. 
+
+
+## Sesión 7 — Skills, memoria de trabajo y Agent Framework
+
+Dominio: `fraud`. La misma conversación con los dos runtimes (paso 7).
+
+| | `react` | `agent_framework` |
+|---|---|---|
+| Tools pedidas en la consulta | get_transactions(customer_id=CUS-1001, limit=10) | get_transactions(customer_id=CUS-1001, limit=10) |
+| La acción sensible quedó **NO SE EJECUTA** | block_card(card_id=CRD-2001, reason=fraude) NO SE EJECUTA, pendiente de aprobación | block_card(card_id=CRD-2001, reason=fraude) NO SE EJECUTA, pendiente de aprobación |
+| Pregunta de memoria respondida sin `→` |  Sí. Agente [data_query]: Los movimientos duplicados son TRX-3001 y TRX-3002: ambos del 2026-10-20, SUPERMERCADO DEMO SAN ISIDRO, S/186.40, con la tarjeta CRD-2001. | Sí. Agente [data_query]: Los movimientos duplicados son TRX-3001 y TRX-3002: SUPERMERCADO DEMO SAN ISIDRO, fecha 2026-10-20, -186.40 PEN cada uno, con la tarjeta CRD-2001. |
+| Primer texto (ms) | 16159 ms | 19858 ms |
+| Respuesta completa (ms) | 17616 ms | 21259 ms |
+| Tokens (entrada / salida) | 3032 / 1116 | 3440 / 1051 |
+
+La conversación utilizada fue:
+1. Soy CUS-1001, me cobraron dos veces en el supermercado
+2. Sí, registra el reclamo por el cargo duplicado
+3. ¿Cuál es el saldo de mi cuenta de ahorros?
+4. ¿Qué movimientos estaban duplicados?
+
+### ¿La skill frenó la tool de otro dominio?
+
+Mensaje: Consulta la línea de crédito disponible de la tarjeta CRD-2001. Respuesta: Agente [out_of_scope]: Eso está fuera del alcance de este servicio. Para consultar la línea de crédito disponible usa la aplicación móvil o llama a la línea de atención al cliente, o acude a una agencia. Si necesitas ayuda con bloqueo, movimientos no reconocidos o reclamos, con gusto te atiendo.
+Sí frenó la tool de otro dominio y esto se evidencia en la respuesta del agente como `out_of_scope`. Para este caso se uso el dominio de `cards`
+
+### Diferencias entre los dos runtimes
+
+Runtime: react (Razonamiento y repregunta)
+El agente no ejecuta ninguna herramienta, sino que se detiene únicamente a responder con texto pidiendo más confirmaciones. 
+El enfoque react prefiere volver a conversar, dudar y pedirle al usuario que le reconfirme los detalles antes de dar el siguiente paso.
+
+Runtime: agent_framework (Acción directa)
+El agente ejecuta las herramientas de inmediato en cuanto recibe la orden.
+Intenta procesar la petición de golpe llamando a las herramientas (el sistema luego las frena por ser acciones sensibles, pero el agente fue directamente a la acción).
+
+### Conclusión
+
+agent_framework: es mucho más directo y pragmático: ante la instrucción de registrar el reclamo, intenta invocar las herramientas de inmediato de forma agrupada (file_claim para ambos cargos a la vez)
+react:	 es más conservador y repetitivo: prefiere detenerse en la capa de razonamiento para volver a preguntar y pedir confirmaciones detalladas antes de decidirse a ejecutar la herramienta.
+
+Adicionalmente, en ambos casos, la seguridad funciona de la misma manera: cuando se intenta una acción sensible (como bloquear una tarjeta o registrar un reclamo), el sistema la frena y devuelve el estado de pendiente_aprobacion
+La diferencia está en que agent_framework llega a la barrera de seguridad de forma más rápida, mientras que react a veces alarga la conversación con preguntas antes de llegar al punto de ejecución.
+
+Finalmente, ambos recuerdan perfectamente el contexto de la conversación.
