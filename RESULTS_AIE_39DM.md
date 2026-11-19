@@ -1,3 +1,89 @@
+# Semana 4 - Sesion 7 — Skills, memoria de trabajo y Agent Framework
+
+Dominio: `fraud`. La misma conversación con los dos runtimes (paso 7).
+
+| | `react` | `agent_framework` |
+|---|---|---|
+| Tools pedidas en la consulta | `get_transactions` | `get_transactions`, `file_claim` |
+| La acción sensible quedó **NO SE EJECUTA** | No | Sí: `file_claim(TRX-3001)` y `file_claim(TRX-3002)` quedaron pendientes de aprobación |
+| Pregunta de memoria respondida sin `→` | Sí: «¿Cuál es el saldo de mi cuenta de ahorros?» | Sí: «¿Cuál es el saldo de mi cuenta de ahorros?» |
+| Primer texto (ms) | 17252<br>16849<br>17521 | 31673 ("error": "El servicio del banco no responde)<br>28830<br>21343<br>18481 |
+| Respuesta completa (ms) | 18561 <br>17006<br>17661 | 32600 ("error": "El servicio del banco no responde)<br>29089<br>21357<br>18728 |
+| Tokens (entrada / salida) | 3425 / 1336<br>2565 / 1849<br>2777 / 1894 | 3180 / 1899 ("error": "El servicio del banco no responde)<br>4106 / 2690<br>5516 / 2162<br>3685 / 1527 |
+
+### ¿La skill frenó la tool de otro dominio?
+
+Mensaje: Sí, registra el reclamo por el cargo duplicado. 
+Respuesta: Sí, en react la skill de fraude obligó a completar primero el flujo de bloqueo de la tarjeta antes de permitir el registro del reclamo. Aunque el usuario pidió registrar el reclamo, el runtime no ejecutó ninguna herramienta adicional y volvió a solicitar confirmación para bloquear la tarjeta y elegir una transacción específica. En cambio, en agent_framework sí se permitió continuar con la intención principal, invocando file_claim para ambos cargos y dejando la acción sensible en estado pendiente de aprobación.
+
+
+
+### Diferencias entre los dos runtimes
+
+| Aspecto | `react` | `agent_framework` |
+|---|---|---|
+| Aplicación de la skill | Aplica una restricción más rígida del procedimiento. Considera el bloqueo de tarjeta como requisito previo para registrar un reclamo por cargo duplicado. | Separa la consulta de datos de las acciones sensibles. Identifica los cargos duplicados y luego permite solicitar el reclamo con confirmación del usuario. |
+| Uso de herramientas | Solo ejecutó `get_transactions`. | Ejecutó `get_transactions` y posteriormente `file_claim`. |
+| Registro del reclamo | No llegó a intentar ninguna herramienta de reclamo. | Intentó registrar reclamos para ambos cargos duplicados mediante `file_claim`. |
+| Encadenamiento de tools | Limitado al flujo de consulta inicial. | Capaz de encadenar la consulta de movimientos y la solicitud de reclamo. |
+| Manejo de la intención del usuario | Redirige la conversación a confirmar el bloqueo y seleccionar una transacción. | Avanza hacia la acción solicitada (reclamo) manteniendo las validaciones requeridas. |
+| Interacciones requeridas | Necesita pasos adicionales antes de continuar. | Requiere menos interacción y progresa directamente hacia la acción pedida. |
+| Acciones sensibles | No intenta ejecutar la acción de reclamo. | Solicita la acción sensible, pero la deja **pendiente de aprobación** y no la ejecuta. |
+| Tiempo de respuesta | Más rápido (≈17–18 s). | Más lento (≈18–32 s). |
+| Consumo de tokens | Menor consumo de entrada y salida. | Mayor consumo debido al razonamiento adicional y a la gestión de múltiples tools. |
+| Alineación con la intención del usuario | Media. Prioriza el procedimiento de la skill sobre la acción solicitada. | Alta. Mantiene las restricciones de seguridad sin impedir el avance hacia la solicitud del usuario. |
+
+### Conclusión
+
+agent_framework mostró un comportamiento más alineado con la intención del usuario. Aunque respetó la política de acciones sensibles y no ejecutó realmente los reclamos sin aprobación, sí fue capaz de solicitar la operación mediante file_claim y dejarla pendiente de validación. Por el contrario, react quedó bloqueado y nunca llegó a intentar el registro del reclamo, redirigiendo repetidamente la conversación hacia el bloqueo de la tarjeta. En este escenario, agent_framework demuestra mejor capacidad para coordinar herramientas, mantener el flujo conversacional y evitar que una regla procedimental impida atender la solicitud principal del usuario.
+
+## react
+Tú: Soy CUS-1001, me cobraron dos veces en el supermercado
+  → get_transactions(customer_id=CUS-1001, limit=20)
+    resultado: {"result": [{"id": "TRX-3001", "date": "2026-10-20", "description": "SUPERMERCADO DEMO SAN ISIDRO", "amount": -186.4, "currency": "PEN", "card_id": "CRD-2001", 
+  Agente [sensitive_action]: He localizado dos cargos iguales en SUPERMERCADO DEMO SAN ISIDRO: TRX-3001 (2026-10-20) -186.4 PEN y TRX-3002 (2026-10-20) -186.4 PEN. La tarjeta asociada es CRD-2001. Al reportar un cobro duplicado lo primero es bloquear la tarjeta (el bloqueo es definitivo). ¿Confirmas que proceda a bloquear la tarjeta CRD-2001? Después, dime cuál movimiento quieres reclamar (TRX-3001 o TRX-3002) para registrar el reclamo.
+  (primer texto en 17252 ms, respuesta completa en 18561 ms, 3425 tokens de entrada, 1336 de salida)
+Tú: Sí, registra el reclamo por el cargo duplicado
+  Agente [sensitive_action]: Para proteger su cuenta primero debo bloquear la tarjeta CRD-2001 (el bloqueo es definitivo). ¿Confirma que proceda a bloquearla? Además, ¿qué movimiento quiere reclamar: TRX-3001 o TRX-3002? Tras su confirmación ejecutaré el bloqueo y luego registraré el reclamo; quedará pendiente de aprobación por un asesor.
+  Fuentes:
+   [1] unrecognized-charges-procedure.md · Procedimiento ante cargos no reconocidos > Paso 1: bloquear la tarjeta
+   [2] unrecognized-charges-procedure.md · Procedimiento ante cargos no reconocidos > Paso 3: registrar el reclamo
+   [3] card-blocking-policy.docx · Política de bloqueo de tarjetas > Confirmación obligatoria
+  (primer texto en 16849 ms, respuesta completa en 17006 ms, 2565 tokens de entrada, 1849 de salida)
+Tú: ¿Cuál es el saldo de mi cuenta de ahorros?
+  Agente [out_of_scope]: Eso está fuera de mi área (fraude, bloqueo y reclamos); no puedo consultar saldos. Para ver su saldo, use la aplicación móvil o la banca por internet, o llame al (01) 555-0200. Si necesita ayuda con un cargo no reconocido, bloqueo de tarjeta o registrar un reclamo, puedo asistirle aquí.
+  Fuentes:
+   [1] service-channels.html · Canales de atención para fraude y reclamos > Aplicación móvil
+   [2] service-channels.html · Canales de atención para fraude y reclamos > Banca por teléfono
+  (primer texto en 17521 ms, respuesta completa en 17661 ms, 2777 tokens de entrada, 1894 de salida)
+
+## Agent framework
+Tú: nueva
+  (sesión nueva)
+Tú: Soy CUS-1001, me cobraron dos veces en el supermercado
+  → get_transactions(customer_id=CUS-1001, limit=10)
+    error: {"error": "El servicio del banco no responde; intenta de nuevo en unos minutos"}
+  Agente [sensitive_action]: Entiendo. Intenté consultar sus movimientos (CUS-1001) pero el servicio no respondió. ¿Desea que lo intente de nuevo ahora para identificar el/los cargos duplicados y, con su confirmación sobre el movimiento, registrar el reclamo? Si sospecha fraude y prefiere bloquear la tarjeta, tenga en cuenta que el bloqueo es definitivo; si confirma, le pediré qué tarjeta (CRD-...) bloquear y solicitaré la acción, que quedará pendiente de aprobación del asesor. No comparta números completos de tarjeta, DNI ni claves.
+  (primer texto en 31673 ms, respuesta completa en 32600 ms, 3180 tokens de entrada, 1899 de salida)
+Tú: Soy CUS-1001, me cobraron dos veces en el supermercado
+  → get_transactions(customer_id=CUS-1001, limit=10)
+    resultado: {"result": [{"id": "TRX-3001", "date": "2026-10-20", "description": "SUPERMERCADO DEMO SAN ISIDRO", "amount": -186.4, "currency": "PEN", "card_id": "CRD-2001", 
+  Agente [data_query]: He revisado sus movimientos: aparecen dos cargos idénticos —TRX-3001 y TRX-3002— ambos el 2026-10-20 en SUPERMERCADO DEMO SAN ISIDRO por −186.40 PEN con la tarjeta CRD-2001. ¿Confirma que desea que registre un reclamo por ambos cargos duplicados? Si confirma, procederé a registrar el reclamo (la acción requiere su confirmación y quedará pendiente de aprobación del asesor). Si prefiere, también puedo solicitar el bloqueo definitivo de la tarjeta CRD-2001 (el bloqueo es irreversible y, si lo solicita, quedará pendiente de aprobación). No comparta números completos de tarjeta, DNI ni claves.
+  (primer texto en 28830 ms, respuesta completa en 29089 ms, 4106 tokens de entrada, 2690 de salida)
+Tú: Sí, registra el reclamo por el cargo duplicado
+  → file_claim(customer_id=CUS-1001, transaction_id=TRX-3001, reason=Cobro duplicado en SUPERMERCADO DEMO SAN ISIDRO (cargo TRX-3001). Solicito reclamo por cargo duplicado.)
+  → file_claim(customer_id=CUS-1001, transaction_id=TRX-3002, reason=Cobro duplicado en SUPERMERCADO DEMO SAN ISIDRO (cargo TRX-3002). Solicito reclamo por cargo duplicado.)
+    NO SE EJECUTA, pendiente de aprobación: {"status": "pendiente_aprobacion", "detail": "Acción sensible: no se ejecutó ni se registró todavía. Dile al cliente que la pediste y que un asesor la va a revi
+    NO SE EJECUTA, pendiente de aprobación: {"status": "pendiente_aprobacion", "detail": "Acción sensible: no se ejecutó ni se registró todavía. Dile al cliente que la pediste y que un asesor la va a revi
+  Agente [sensitive_action]: He solicitado el registro del reclamo por los cargos TRX-3001 y TRX-3002 (cargo duplicado). La solicitud está pendiente de aprobación por un asesor; le avisaré en cuanto haya novedades. No comparta números completos de tarjeta, DNI ni claves.
+  (primer texto en 21343 ms, respuesta completa en 21357 ms, 5516 tokens de entrada, 2162 de salida)
+Tú: ¿Cuál es el saldo de mi cuenta de ahorros?
+  Agente [out_of_scope]: Eso está fuera del área de fraude, bloqueo y reclamos. Para consultar su saldo use la aplicación móvil del banco o llame a la banca por teléfono al (01) 555-0200 (lun–sáb 8:00–20:00). Si necesita revisar cargos no reconocidos o registrar un reclamo, con gusto le ayudo.
+  Fuentes:
+   [1] service-channels.html · Canales de atención para fraude y reclamos > Aplicación móvil
+   [2] service-channels.html · Canales de atención para fraude y reclamos > Banca por teléfono
+  (primer texto en 18481 ms, respuesta completa en 18728 ms, 3685 tokens de entrada, 1527 de salida)
+
 # Semana 3 - Sesión 6 — Tools del MCP en el chat
 
 Dominio: `fraud`. MCP: el mock (`http://127.0.0.1:8200/mcp`) y, si ya tienes `MCP_URL`, el compartido (`bank-mcp`).
