@@ -1,3 +1,189 @@
+## Semana 4 -Sesión 8 — Aprobación humana, validación y reintentos
+
+Dominio: `frauds` (paso 6).
+
+| Caso | Runtime | Mensaje | Qué pasó | Resultado o ID |
+|---|---|---|---|---|
+| Aprobar | `agent_framework` | "Sí, registra el reclamo por el cargo duplicado TRX-3002" | Se solicitó la creación del reclamo, quedó pendiente de aprobación del asesor y posteriormente fue aprobada y ejecutada. | Reclamo registrado **CLM-9002** para **TRX-3002** |
+| Rechazar | `react` | "Sí, registra el reclamo por el cargo duplicado TRX-3002" | Se solicitó el reclamo, quedó pendiente de aprobación, pero el asesor rechazó la acción, por lo que no se ejecutó. | **Solicitud rechazada**, sin ID de reclamo |
+| Error de negocio (`CUS-9999`) | `react` | "Soy CUS-9999, me cobraron dos veces en el supermercado" | La herramienta devolvió que el cliente no existe. El agente informó el error y pidió validar el código de cliente. | Error: **"El cliente CUS-9999 no existe"** |
+| Input inválido | `react` | "Mi número de cliente es ABCD-1001, me cobraron dos veces en el supermercado" | El identificador no cumple el formato esperado (`CUS-XXXX`). El agente solicitó un código válido antes de continuar. | Validación fallida: formato de cliente inválido (**ABCD-1001**) |
+
+### La trayectoria en el log
+
+INFO:     Will watch for changes in these directories: ['E:\\IA\\git\\agent-scratch']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [35132] using WatchFiles
+INFO agent.infrastructure.bootstrap: Foundry auth provider: entra_id
+INFO azure.identity._credentials.environment: No environment configuration found.
+INFO azure.identity._credentials.managed_identity: ManagedIdentityCredential will use IMDS
+INFO agent.infrastructure.bootstrap: Foundry auth provider: entra_id
+INFO azure.identity._credentials.environment: No environment configuration found.
+INFO azure.identity._credentials.managed_identity: ManagedIdentityCredential will use IMDS
+INFO azure.identity._credentials.environment: No environment configuration found.
+INFO azure.identity._credentials.managed_identity: ManagedIdentityCredential will use IMDS
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=REDACTED'
+Request method: 'GET'
+Request headers:
+    'x-ms-client-request-id': '2a729d9d-e459-11f1-af71-0093376f1a7a'
+    'User-Agent': 'azsdk-python-identity/1.26.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+No body was attached to the request
+INFO azure.identity._credentials.chained: DefaultAzureCredential acquired a token from AzureCliCredential
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'https://srch-workshop-jsu3.search.windows.net/indexes('idx-team-08')/docs/$count?api-version=2026-04-01'
+Request method: 'GET'
+Request headers:
+    'Accept': 'application/json;odata.metadata=none'
+    'x-ms-client-request-id': '2a729d9c-e459-11f1-b020-0093376f1a7a'
+    'User-Agent': 'azsdk-python-search-documents/12.0.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+    'Authorization': 'REDACTED'
+No body was attached to the request
+INFO azure.core.pipeline.policies.http_logging_policy: Response status: 200
+Response headers:
+    'Transfer-Encoding': 'chunked'
+    'Content-Type': 'text/plain; charset=utf-8'
+    'Content-Encoding': 'REDACTED'
+    'Vary': 'REDACTED'
+    'Strict-Transport-Security': 'REDACTED'
+    'Preference-Applied': 'REDACTED'
+    'OData-Version': 'REDACTED'
+    'request-id': '2a729d9c-e459-11f1-b020-0093376f1a7a'
+    'elapsed-time': 'REDACTED'
+    'Date': 'Thu, 19 Nov 2026 20:38:26 GMT'
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'https://srch-workshop-jsu3.search.windows.net/indexes('idx-team-08')/docs/$count?api-version=2026-04-01'
+Request method: 'GET'
+Request headers:
+    'Accept': 'application/json;odata.metadata=none'
+    'x-ms-client-request-id': '2c2cf84f-e459-11f1-8630-0093376f1a7a'
+    'User-Agent': 'azsdk-python-search-documents/12.0.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+    'Authorization': 'REDACTED'
+No body was attached to the request
+INFO azure.core.pipeline.policies.http_logging_policy: Response status: 200
+Response headers:
+    'Transfer-Encoding': 'chunked'
+    'Content-Type': 'text/plain; charset=utf-8'
+    'Content-Encoding': 'REDACTED'
+    'Vary': 'REDACTED'
+    'Strict-Transport-Security': 'REDACTED'
+    'Preference-Applied': 'REDACTED'
+    'OData-Version': 'REDACTED'
+    'request-id': '2c2cf84f-e459-11f1-8630-0093376f1a7a'
+    'elapsed-time': 'REDACTED'
+    'Date': 'Thu, 19 Nov 2026 20:38:26 GMT'
+INFO agent.infrastructure.bootstrap: Knowledge base: azure_search · https://srch-workshop-jsu3.search.windows.net (índice idx-team-08) · 56 chunks
+INFO azure.identity._credentials.environment: No environment configuration found.
+INFO azure.identity._credentials.managed_identity: ManagedIdentityCredential will use IMDS
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=REDACTED'
+Request method: 'GET'
+Request headers:
+    'x-ms-client-request-id': '2c40e63f-e459-11f1-9442-0093376f1a7a'
+    'User-Agent': 'azsdk-python-identity/1.26.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+No body was attached to the request
+INFO azure.identity._credentials.chained: DefaultAzureCredential acquired a token from AzureCliCredential
+INFO httpx2: HTTP Request: POST https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp "HTTP/1.1 200 OK"
+INFO httpx2: HTTP Request: POST https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp "HTTP/1.1 200 OK"
+INFO agent.infrastructure.bootstrap: MCP: https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp · 4 tools: get_transactions, get_claim_status, block_card, file_claim
+INFO agent.infrastructure.bootstrap: Agent runtime: agent_framework
+INFO agent.infrastructure.bootstrap: Foundry auth provider: entra_id
+INFO azure.identity._credentials.environment: No environment configuration found.
+INFO azure.identity._credentials.managed_identity: ManagedIdentityCredential will use IMDS
+INFO:     Started server process [17564]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=REDACTED'
+Request method: 'GET'
+Request headers:
+    'x-ms-client-request-id': '5f4e0bc7-e459-11f1-931a-0093376f1a7a'
+    'User-Agent': 'azsdk-python-identity/1.26.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+No body was attached to the request
+INFO azure.identity._credentials.chained: DefaultAzureCredential acquired a token from AzureCliCredential
+INFO httpx2: HTTP Request: POST https://aif-workshop-jsu3.openai.azure.com/openai/v1/embeddings "HTTP/1.1 200 OK"
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'https://srch-workshop-jsu3.search.windows.net/indexes('idx-team-08')/docs/search.post.search?api-version=2026-04-01'
+Request method: 'POST'
+Request headers:
+    'Content-Type': 'application/json'
+    'Content-Length': '31432'
+    'Accept': 'application/json;odata.metadata=none'
+    'x-ms-client-request-id': '60f7cf05-e459-11f1-8feb-0093376f1a7a'
+    'User-Agent': 'azsdk-python-search-documents/12.0.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+    'Authorization': 'REDACTED'
+A body is sent with the request
+INFO azure.core.pipeline.policies.http_logging_policy: Response status: 200
+Response headers:
+    'Transfer-Encoding': 'chunked'
+    'Content-Type': 'application/json; odata.metadata=none; odata.streaming=true; charset=utf-8'
+    'Content-Encoding': 'REDACTED'
+    'Vary': 'REDACTED'
+    'Strict-Transport-Security': 'REDACTED'
+    'Preference-Applied': 'REDACTED'
+    'OData-Version': 'REDACTED'
+    'request-id': '60f7cf05-e459-11f1-8feb-0093376f1a7a'
+    'elapsed-time': 'REDACTED'
+    'Date': 'Thu, 19 Nov 2026 20:39:55 GMT'
+INFO:     127.0.0.1:61789 - "POST /chat/stream HTTP/1.1" 200 OK
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=REDACTED'
+Request method: 'GET'
+Request headers:
+    'x-ms-client-request-id': '613d9a2a-e459-11f1-97ff-0093376f1a7a'
+    'User-Agent': 'azsdk-python-identity/1.26.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+No body was attached to the request
+INFO azure.identity._credentials.chained: DefaultAzureCredential acquired a token from AzureCliCredential
+INFO httpx2: HTTP Request: POST https://aif-workshop-jsu3.openai.azure.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO agent_framework: Function name: get_transactions
+INFO httpx2: HTTP Request: POST https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp "HTTP/1.1 200 OK"
+INFO httpx2: HTTP Request: POST https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp "HTTP/1.1 200 OK"
+INFO agent_framework: Function get_transactions succeeded.
+INFO agent_framework: Function duration: 0.559432s
+INFO httpx2: HTTP Request: POST https://aif-workshop-jsu3.openai.azure.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO agent.infrastructure.llm.agent_framework_runtime: llm AgentFramework {'models': ['gpt-5-mini'], 'llm_calls': 2, 'latency_ms': 14221, 'prompt_tokens': 3140, 'completion_tokens': 1105}
+INFO agent.application.chat_service: trayectoria 1f6ea454-f0a5-466c-894c-350a1319c9f6: get_transactions error → respuesta data_query
+INFO httpx2: HTTP Request: POST https://aif-workshop-jsu3.openai.azure.com/openai/v1/embeddings "HTTP/1.1 200 OK"
+INFO azure.core.pipeline.policies.http_logging_policy: Request URL: 'https://srch-workshop-jsu3.search.windows.net/indexes('idx-team-08')/docs/search.post.search?api-version=2026-04-01'
+Request method: 'POST'
+Request headers:
+    'Content-Type': 'application/json'
+    'Content-Length': '31394'
+    'Accept': 'application/json;odata.metadata=none'
+    'x-ms-client-request-id': 'ac639bec-e459-11f1-9a99-0093376f1a7a'
+    'User-Agent': 'azsdk-python-search-documents/12.0.0 Python/3.12.10 (Windows-11-10.0.26200-SP0)'
+    'Authorization': 'REDACTED'
+A body is sent with the request
+INFO azure.core.pipeline.policies.http_logging_policy: Response status: 200
+Response headers:
+    'Transfer-Encoding': 'chunked'
+    'Content-Type': 'application/json; odata.metadata=none; odata.streaming=true; charset=utf-8'
+    'Content-Encoding': 'REDACTED'
+    'Vary': 'REDACTED'
+    'Strict-Transport-Security': 'REDACTED'
+    'Preference-Applied': 'REDACTED'
+    'OData-Version': 'REDACTED'
+    'request-id': 'ac639bec-e459-11f1-9a99-0093376f1a7a'
+    'elapsed-time': 'REDACTED'
+    'Date': 'Thu, 19 Nov 2026 20:42:01 GMT'
+INFO:     127.0.0.1:57105 - "POST /chat/stream HTTP/1.1" 200 OK
+INFO httpx2: HTTP Request: POST https://aif-workshop-jsu3.openai.azure.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO agent_framework: Function name: get_transactions
+INFO httpx2: HTTP Request: POST https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp "HTTP/1.1 200 OK"
+INFO httpx2: HTTP Request: POST https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp "HTTP/1.1 200 OK"
+INFO httpx2: HTTP Request: POST https://ca-mcp-server.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/mcp "HTTP/1.1 200 OK"
+INFO agent_framework: Function get_transactions succeeded.
+INFO agent_framework: Function duration: 0.673200s
+INFO httpx2: HTTP Request: POST https://aif-workshop-jsu3.openai.azure.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO agent.infrastructure.llm.agent_framework_runtime: llm AgentFramework {'models': ['gpt-5-mini'], 'llm_calls': 2, 'latency_ms': 16961, 'prompt_tokens': 3331, 'completion_tokens': 1896}
+INFO agent.application.chat_service: trayectoria 391e64a7-60b7-4d2b-910f-f9ab8ca16d57: get_transactions ok → respuesta data_query
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [17564]
+INFO:     Stopping reloader process [35132]
+
+### ¿Algo se ejecutó sin que lo aprobaras?
+
+No. En todos los escenarios con acciones sensibles (file_claim), el sistema solicitó confirmación y dejó la operación pendiente de aprobación humana. La acción solo se ejecutó cuando fue aprobada explícitamente por el asesor y fue rechazada cuando el asesor la denegó.
+
+### Conclusión
+
+El comportamiento fue correcto y seguro. Tanto Agent Framework como ReAct respetaron el flujo de aprobación para acciones sensibles, gestionaron adecuadamente errores de negocio (cliente inexistente) y validaciones de entrada (formato de cliente inválido). No se observaron alucinaciones ni ejecuciones no autorizadas; todas las respuestas estuvieron basadas en los resultados de las herramientas y en las decisiones de aprobación humana.
+
 # Semana 4 - Sesion 7 — Skills, memoria de trabajo y Agent Framework
 
 Dominio: `fraud`. La misma conversación con los dos runtimes (paso 7).
