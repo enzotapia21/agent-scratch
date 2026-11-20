@@ -132,3 +132,37 @@ Adicionalmente, en ambos casos, la seguridad funciona de la misma manera: cuando
 La diferencia está en que agent_framework llega a la barrera de seguridad de forma más rápida, mientras que react a veces alarga la conversación con preguntas antes de llegar al punto de ejecución.
 
 Finalmente, ambos recuerdan perfectamente el contexto de la conversación.
+
+## Sesión 8 — Aprobación humana, validación y reintentos
+
+Dominio: `fraud` (paso 6).
+
+| Caso | Runtime | Mensaje | Qué pasó | Resultado o ID |
+|------|---------|---------|----------|----------------|
+| Aprobar | `agent_framework` | Sí, registra el reclamo por el cargo duplicado | Se solicitó al asesor la aprobación del registro. Asesor indico `s` | Agente informo que el reclamo quedo registrado con código CLM-9001 |
+| Rechazar | `react` | Sí, registra el reclamo por el cargo duplicado | Se solicitó al asesor la aprobación del registro. Asesor indico `n` | Agente informo que el asesor rechazó la solicitud de reclamo por TRX-3002; la acción no se ejecutó. |
+| Error de negocio (`CUS-9999`) | `react` | Soy CUS-9999, me cobraron dos veces en el supermercado | Se generó el error El cliente CUS-9999 no existe | Agente informo No encuentro el cliente CUS-9999 en nuestro sistema. Confirma por favor tu código de cliente (ej. CUS-1001) |
+| Input inválido | `react` | Mi número de cliente es 1001, ¿qué comisiones me cobraron? | Se generó un error de formato | Agente informo Para ver las comisiones debo consultar tus movimientos. Confirma tu código de cliente con el formato CUS-1001 (no envíes números de tarjeta ni claves) |
+
+### La trayectoria en el log
+
+| Trayectoria |
+|-------------|
+| INFO agent.application.chat_service: trayectoria 9ffc841d-22bd-4ca4-898e-c97fd5457c8a: get_transactions ok → respuesta sensitive_action |
+| INFO agent.application.chat_service: trayectoria 9ffc841d-22bd-4ca4-898e-c97fd5457c8a: file_claim pending_approval → respuesta sensitive_action |
+| INFO agent.application.chat_service: trayectoria 9ffc841d-22bd-4ca4-898e-c97fd5457c8a: decisión del asesor → file_claim ok |
+| INFO agent.application.chat_service: trayectoria 1d06b9a5-6e33-4486-a73c-fe35304de411: get_transactions ok → respuesta data_query |
+| INFO agent.application.chat_service: trayectoria 1d06b9a5-6e33-4486-a73c-fe35304de411: sin tools → respuesta sensitive_action |
+| INFO agent.application.chat_service: trayectoria 1d06b9a5-6e33-4486-a73c-fe35304de411: sin tools → respuesta sensitive_action |
+| INFO agent.application.chat_service: trayectoria 1d06b9a5-6e33-4486-a73c-fe35304de411: file_claim pending_approval → respuesta sensitive_action |
+| INFO agent.application.chat_service: trayectoria 1d06b9a5-6e33-4486-a73c-fe35304de411: decisión del asesor → file_claim rejected |
+| INFO agent.application.chat_service: trayectoria fd9e0d39-1bff-46fc-8cc8-690d8fda3c2a: get_transactions error → respuesta data_query |
+| INFO agent.application.chat_service: trayectoria de999a58-b655-4581-9b39-f71e50310765: sin tools → respuesta data_query |
+
+### ¿Algo se ejecutó sin que lo aprobaras?
+
+No. En todos los escenarios con acciones sensibles (file_claim), el sistema solicitó confirmación y dejó la operación pendiente de aprobación humana. La acción solo se ejecutó cuando fue aprobada explícitamente por el asesor y fue rechazada cuando el asesor la denegó.
+
+### Conclusión
+
+El comportamiento fue correcto y seguro. Tanto Agent Framework como ReAct respetaron el flujo de aprobación para acciones sensibles, gestionaron adecuadamente errores de negocio (cliente inexistente) y validaciones de entrada (formato de cliente inválido). No se observaron alucinaciones ni ejecuciones no autorizadas; todas las respuestas estuvieron basadas en los resultados de las herramientas y en las decisiones de aprobación humana.
