@@ -140,3 +140,39 @@ El runtime `react` implementa explícitamente el ciclo modelo → tool → resul
 ### Conclusión
 
 La skill de `fraud` limitó correctamente las tools disponibles y definió el criterio de terminación. La memoria de trabajo conservó el resultado de `get_transactions`, permitió inferir `CRD-2001` en el turno de bloqueo y contestar después el monto sin repetir la consulta. Ambos runtimes respetaron la barrera de aprobación: `block_card` se solicitó, pero no se ejecutó. Agent Framework puede sustituir el ciclo ReAct propio sin perder las reglas de seguridad ni el contexto conversacional; en esta prueba fue ligeramente más rápido y más breve en la salida.
+
+## Semana 4 - Sesión 8 — Aprobación humana, validación y reintentos
+
+Dominio: `fraud` (paso 6).
+
+| Caso | Runtime | Mensaje | Qué pasó | Resultado o ID |
+|---|---|---|---|---|
+| Aprobar | `agent_framework` | "Sí, registra el reclamo por el cargo duplicado TRX-3002" | Se consultaron los movimientos, se pidió `file_claim` para `TRX-3002` y quedó pendiente de aprobación. El asesor aprobó con `s`; la tool se ejecutó y creó el reclamo. | Reclamo registrado **CLM-9001** para `TRX-3002` |
+| Rechazar | `agent_framework` | "Sí, registra el reclamo por el cargo duplicado TRX-3002" | Se pidió `file_claim` para `TRX-3002` y quedó pendiente de aprobación. El asesor rechazó con `n`; la acción no se ejecutó. | **Solicitud rechazada**, sin ID de reclamo |
+| Error de negocio (`CUS-9999`) | `agent_framework` | "Soy CUS-9999, me cobraron dos veces en el supermercado" | `get_transactions` devolvió `{"error": "El cliente CUS-9999 no existe"}`. El agente informó el error y pidió confirmar el código de cliente. | Error de negocio: cliente `CUS-9999` inexistente |
+| Input inválido | `agent_framework` | `customer_id=ABCD-1001` en `get_transactions` | La validación del contrato rechazó el identificador antes de llamar al banco: no cumple el patrón `^CUS-\d{4}$`. | Validación fallida: `ABCD-1001` no es un `CUS-XXXX` válido |
+
+### La trayectoria en el log
+
+Durante el reintento del servicio compartido se observaron ambos estados:
+
+```text
+INFO agent.application.chat_service: trayectoria 1f6ea454-f0a5-466c-894c-350a1319c9f6: get_transactions error → respuesta data_query
+INFO agent.application.chat_service: trayectoria 391e64a7-60b7-4d2b-910f-f9ab8ca16d57: get_transactions ok → respuesta data_query
+```
+
+En las pruebas de aprobación y rechazo no se registró ejecución de la acción mientras estaba pendiente:
+
+```text
+NO SE EJECUTA, pendiente de aprobación
+resultado: {"id": "CLM-9001", "customer_id": "CUS-1001", "transaction_id": "TRX-3002", "status": "registered"}
+rechazada por el asesor: {"status": "rechazada", "detail": "El asesor rechazó la acción: no se ejecutó."}
+```
+
+### ¿Algo se ejecutó sin que lo aprobaras?
+
+No. `file_claim(CUS-1001, TRX-3002)` quedó en `pending_approval` y no se ejecutó de inmediato. Al aprobar con `s`, se creó `CLM-9001`; al rechazar con `n`, la tool devolvió `rechazada` y no creó ningún reclamo.
+
+### Conclusión
+
+El comportamiento de `agent_framework` fue correcto y seguro en esta ejecución. Las acciones sensibles quedaron pendientes hasta la decisión del asesor: la aprobación creó `CLM-9001` y el rechazo impidió la ejecución. `CUS-9999` produjo el error de negocio esperado y `ABCD-1001` fue rechazado por el patrón de validación `CUS-\d{4}` antes de contactar al banco. También se confirmó que un fallo temporal de `get_transactions` puede recuperarse al reintentarlo. No se observaron ejecuciones no autorizadas ni alucinaciones.
