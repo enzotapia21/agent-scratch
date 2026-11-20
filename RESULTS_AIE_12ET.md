@@ -147,7 +147,7 @@ Dominio: `fraud` (paso 6).
 ### La trayectoria en el log
 
 | Trayectoria |
----------------
+|-------------|
 | INFO agent.application.chat_service: trayectoria 9ffc841d-22bd-4ca4-898e-c97fd5457c8a: get_transactions ok → respuesta sensitive_action |
 | INFO agent.application.chat_service: trayectoria 9ffc841d-22bd-4ca4-898e-c97fd5457c8a: file_claim pending_approval → respuesta sensitive_action |
 | INFO agent.application.chat_service: trayectoria 9ffc841d-22bd-4ca4-898e-c97fd5457c8a: decisión del asesor → file_claim ok |
