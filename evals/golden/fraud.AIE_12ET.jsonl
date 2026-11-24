@@ -1,0 +1,1 @@
+{"id": "fraud-AIE12ET", "type": "answerable", "history": [], "question": "¿Qué debo hacer si el cajero automático tragó o retuvo mi tarjeta?", "expected_intent": "product_question", "expected_sources": ["card-blocking-policy.docx", "fraud-and-claims-faq.md"], "forbidden_sources": [], "key_facts": ["bloqueo temporal"]}

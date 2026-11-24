@@ -19,16 +19,16 @@ Dominios: `fraud`, `fees`, `cards`, `loans` y `support` (variable `DOMAIN`).
 | Versión | Qué hace el agente | Estado |
 |---|---|---|
 | `main` | arquetipo: capas, contratos y `TODO` por sesión | ✅ |
-| `t1-s1` | `/chat` con respuesta tipada contra el mock de Foundry | ⏳ |
-| `t1-s2` = `t1-v0.1` | historial por sesión, errores tipados, consumo por turno y Entra ID | ⏳ |
-| `t2-s3` | ingesta del corpus del dominio e índice local | ⏳ |
+| `t1-s1` | `/chat` con respuesta tipada contra el mock de Foundry | ✅ |
+| `t1-s2` = `t1-v0.1` | historial por sesión, errores tipados, consumo por turno y Entra ID | ✅ |
+| `t2-s3` | ingesta del corpus del dominio e índice local | ✅ |
 | `t2-s4` | retrieval híbrido y RAG con citas en `/chat` | ⏳ |
 | `t2-s5` = `t2-v0.2` | evaluación del RAG y Azure AI Search | ⏳ |
 | `t3-*` → `t3-v0.3` | tools MCP, memoria y aprobación humana | ⏳ |
 | `t4-*` → `t4-v0.4` | despliegue, trazas, evaluaciones y guardrails | ⏳ |
 | `v1.0` | integración final | ⏳ |
 
-Esta copia está en `main` (el arquetipo de partida). Para saber en qué versión está la tuya: `git describe --tags`.
+Esta copia está en `t2-s3`. Para saber en qué versión está la tuya: `git describe --tags`.
 
 ## Requisitos
 
@@ -66,3 +66,22 @@ devops/              contenedor y compose
 ```
 
 Las dependencias van `infrastructure → application → domain`, nunca al revés.
+
+
+s3_AIE_39DM : Se realiza la ingesta del corpus y base vectorial local
+
+# Semana 2 - Sesión 4 - s4_AIE_12ET
+1. Búsqueda Híbrida y Fusión de Rankings (Híbrida + RRF)
+- Combinación de enfoques: Se implementa una estrategia dual que une la búsqueda por significado (vectores con Qdrant o Azure AI Search) con la búsqueda exacta por palabras clave (BM25)
+- Reciprocal Rank Fusion (RRF): Permite unificar los resultados de ambos "jueces" (significado y palabras) basándose en las posiciones de los fragmentos, garantizando que los documentos más relevantes y precisos asciendan al primer lugar.
+
+2. Reescribir Preguntas y Control de Vigencia
+- Contexto de seguimiento: Gracias al módulo de reescritura (QueryRewriter), si haces una pregunta ambigua o de seguimiento (ejem: como "¿y si es fraude?"), el modelo la transforma automáticamente en una pregunta completa y autocontenida antes de buscar en la biblioteca.
+- Filtros de vigencia: El sistema/aplicación excluye de forma nativa los documentos o reglamentos vencidos antes de realizar la búsqueda (valid_until), evitando por completo que información obsoleta contamine o llegue a la respuesta final del usuario.
+
+3. Fuentes Verificables y Streaming Eficiente
+- Citas sin invenciones: El modelo de lenguaje solo selecciona los números identificadores de los fragmentos provistos en el contexto ([1], [2]), y el código del agente valida rigurosamente que correspondan a un documento existente para descartar cualquier alucinación o cita inventada.
+- Experiencia de usuario con Streaming: Utilizando Server-Sent Events (SSE) y herramientas de lectura parcial de JSON, la respuesta no llega de golpe, sino que aparece palabra por palabra reduciendo drásticamente la latencia percibida (el primer texto se muestra en menos de medio segundo).
+
+
+s4_AIE_39DM : Foundry (chat + embeddings) con Entra ID + Qdrant local para desarrollar + Azure AI Search para cerrar

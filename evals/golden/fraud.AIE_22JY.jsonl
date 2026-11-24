@@ -1,0 +1,1 @@
+{"id": "fraud-AIE22JY", "type": "answerable", "history": [], "question": "¿Cuál es el plazo para presentar un reclamo de fraude?", "expected_intent": "product_question", "expected_sources": ["claims-regulation.pdf", "fraud-and-claims-faq.md"], "forbidden_sources": [], "key_facts": ["60 días calendario"]}
