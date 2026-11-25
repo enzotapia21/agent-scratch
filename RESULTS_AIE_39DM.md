@@ -1,3 +1,41 @@
+## Semana 5 -Sesión 9 — Despliegue en Azure
+
+Equipo: `team-08`. Dominio: `fraud`.
+
+| Comprobación | Resultado |
+|---|---|
+| Tests en el contenedor (paso 3) | 139 passed, 5 skipped in 5.92s |
+| Acción aprobada después de reiniciar `uvicorn` (paso 2, Cosmos DB) |   resultado: {"id": "CLM-9002", "customer_id": "CUS-1001", "transaction_id": "TRX-3002", "reason": "Cargo duplicado en supermercado - solicito reclamo por TRX-3002", "status  Agente [sensitive_action]: Su reclamo quedó registrado con código CLM-9002 por TRX-3002; se abrió el 2026-10-28 y la fecha límite de respuesta es 2026-11-27. La solicitud está registrada para que el banco la procese, no aplicada. |
+| Imagen desplegada (`team-NN/agent:<sha>`) | Run az acr login --name "${ACR_LOGIN_SERVER%%. Login Succeeded The push refers to repository [acrworkshopjsu3.azurecr.io/team-08/agent]881fc932939e: Waiting d1a882b7ed13df622a4c9859a8de6a4640fa8ab7: digest: sha256:c9b6a27c5ebae8052316bae59e259d93b7aa6496ba4be2b235529e3532912132 size: 856|
+| Revisión activa y duración del job `deploy` | deploy succeeded 4 hours ago in 2m 59s |
+| `/health` del agente desplegado | (agent) PS E:\IA\git\agent-scratch> uv run python dev/chat.py Agente en https://ca-agent-chat-08.icybush-2ea2dfc1.eastus2.azurecontainerapps.io: ok Conversación con el agente. Escribe "nueva" para otra sesión o "salir" para terminar. |
+| Respuesta con `Fuentes:` contra Azure (y su tiempo en ms) | Tú: Soy CUS-1001, me cobraron dos veces en el supermercado Agente [sensitive_action]: Intenté consultar tus movimientos pero el servicio del banco no respondió. Para abrir el reclamo necesito que confirmes cuál es el cargo: envía el código TRX-... que aparece en la app o, si no lo tienes, dime la fecha y el monto exacto del doble cobro en el supermercado. No compartas números completos de tarjeta ni claves. Cuando confirmes el movimiento, procedo a registrar el reclamo; la acción quedará pendiente de aprobación por un asesor. Nota: el reclamo por doble cobro (contracargo) se puede presentar hasta 60 días desde la operación. Fuentes: [1] service-channels.html · Canales de atención para fraude y reclamos > Aplicación móvil [2] unrecognized-charges-procedure.md · Procedimiento ante cargos no reconocidos > Paso 2: revisar los movimientos [3] unrecognized-charges-procedure.md · Procedimiento ante cargos no reconocidos > Paso 4: seguimiento (primer texto en 14138 ms, respuesta completa en 14280 ms, 2081 tokens de entrada, 1611 de salida) Tú: Sí, registra el reclamo por el cargo duplicado TRX-3002 → file_claim(customer_id=CUS-1001, transaction_id=TRX-3002, reason=Cobro duplicado en supermercado: me cobraron dos veces.) NO SE EJECUTA, pendiente de aprobación: {"status": "pendiente_aprobacion", "action_id": "call-26dd80b7", "detail": "Acción sensible: no se ejecutó ni se registró todavía. Dile al cliente que la pedist Agente [sensitive_action]: He solicitado registrar el reclamo por TRX-3002. La solicitud quedó pendiente de aprobación por un asesor (no está resuelta). Puedes consultar el estado en la app: Reclamos > Mis reclamos, o por teléfono con el código del reclamo. Estados posibles: registrado, en evaluación, ampliado, resuelto. Te avisaré si hay novedades. Fuentes: [1] service-channels.html · Canales de atención para fraude y reclamos > Aplicación móvil [2] unrecognized-charges-procedure.md · Procedimiento ante cargos no reconocidos > Paso 4: seguimiento (primer texto en 15773 ms, respuesta completa en 16503 ms, 4418 tokens de entrada, 1991 de salida)|
+| Acción aprobada contra Azure, con su `resultado:` | Asesor: ¿apruebas file_claim(customer_id=CUS-1001, transaction_id=TRX-3002, reason=Cobro duplicado en supermercado: me cobraron dos veces.)? [s/n]: s resultado: {"id": "CLM-9001", "customer_id": "CUS-1001", "transaction_id": "TRX-3002", "reason": "Cobro duplicado en supermercado: me cobraron dos veces.", "status": "regi Agente [sensitive_action]: He registrado tu reclamo por TRX-3002: ID CLM-9001, estado "registered", abierto el 2026-10-28 y con fecha límite de respuesta 2026-11-27. La solicitud queda registrada para que el banco la procese.|
+
+### Qué pone Azure y qué pone la imagen
+
+APPLICATIONINSIGHTS_CONNECTION_STRING
+AZURE_CLIENT_ID
+AZURE_OPENAI_ENDPOINT
+COSMOS_CONTAINER
+COSMOS_DATABASE
+COSMOS_ENDPOINT
+FOUNDRY_PROJECT_ENDPOINT
+KEY_VAULT_URI
+MCP_SCOPE
+MCP_URL
+SEARCH_ENDPOINT
+SEARCH_INDEX
+TEAM_ID
+
+### Problemas que encontraste y cómo los resolviste
+
+El problema recurrente en el que la api falla al primer intento porque no esta caliente.
+
+### Conclusión
+
+Asimismo, se comprobó el comportamiento esperado para acciones sensibles: inicialmente la creación del reclamo quedó en estado pendiente de aprobación y no fue ejecutada automáticamente, respetando el mecanismo de control y autorización. Posteriormente, al aprobarse la acción, el agente registró correctamente el reclamo en Azure/Cosmos DB, generando un identificador válido (CLM-9001/CLM-9002) y devolviendo la información correspondiente al usuario. El agente está desplegado, saludable, trazable, respeta el flujo de aprobación para acciones sensibles y ejecuta correctamente las operaciones una vez autorizadas.
+
 ## Semana 4 -Sesión 8 — Aprobación humana, validación y reintentos
 
 Dominio: `frauds` (paso 6).
