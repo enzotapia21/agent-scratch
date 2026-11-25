@@ -166,3 +166,33 @@ No. En todos los escenarios con acciones sensibles (file_claim), el sistema soli
 ### Conclusión
 
 El comportamiento fue correcto y seguro. Tanto Agent Framework como ReAct respetaron el flujo de aprobación para acciones sensibles, gestionaron adecuadamente errores de negocio (cliente inexistente) y validaciones de entrada (formato de cliente inválido). No se observaron alucinaciones ni ejecuciones no autorizadas; todas las respuestas estuvieron basadas en los resultados de las herramientas y en las decisiones de aprobación humana.
+
+
+## Sesión 9 — Despliegue en Azure
+
+Equipo: `team-08`. Dominio: `fraud`.
+
+| Comprobación | Resultado |
+|---|---|
+| Tests en el contenedor (paso 3) | docker run --rm agent:test -> 139 passed, 5 skipped in 12.60s |
+| Acción aprobada después de reiniciar `uvicorn` (paso 2, Cosmos DB) | error: {"error": "El servicio del banco no responde; intenta de nuevo en unos minutos"} - Agente [sensitive_action]: La solicitud de reclamo por TRX-3002 quedó registrada para que el banco la procese; no se aplicó. No la volveré a pedir. |
+| Imagen desplegada (`team-NN/agent:<sha>`) | team-08/agent:d1a882b7ed13df622a4c9859a8de6a4640fa8ab7 |
+| Revisión activa y duración del job `deploy` | 2m 59s |
+| `/health` del agente desplegado | https://ca-agent-chat-08.icybush-2ea2dfc1.eastus2.azurecontainerapps.io/ |
+| Respuesta con `Fuentes:` contra Azure (y su tiempo en ms) | ¿Cuál es el plazo para presentar un reclamo? / respuesta completa: 65109 ms - ¿y si es por fraude? / respuesta completa: 15189 ms |
+| Acción aprobada contra Azure, con su `resultado:` |  Asesor: ¿apruebas file_claim(customer_id=CUS-1001, transaction_id=TRX-3002, reason=Cargo duplicado en supermercado; solicito reclamo por TRX-3002.)? [s/n]: s -> Agente [sensitive_action]: El reclamo por TRX-3002 fue registrado con código CLM-9001; se abrió el 2026-10-28 y la fecha límite de respuesta es el 2026-11-27. La solicitud queda registrada para que el banco la procese; no está aplicada. |
+
+### Qué pone Azure y qué pone la imagen
+
+Lo que pone la imagen / contenedor: El código de la aplicación del agente (por ejemplo FastAPI/Uvicorn y la lógica del agente), sus dependencias empaquetadas y los valores por defecto o configuraciones no sensibles definidos en el `Dockerfile` / código (como el dominio o parámetros base de la app).
+Lo que pone Azure (Container App / entorno / identidad): Las variables de entorno y endpoints inyectados en la Container App (como los endpoints/configuración de Foundry, AI Search, MCP y Cosmos DB), además de la identidad administrada (*Managed Identity*) del agente y la autenticación/tokens de Entra ID (`az login` desde el cliente para enviar el token HTTP). *(No se requiere `.env` en local al consumir el agente desplegado por HTTP).
+
+### Problemas que encontraste y cómo los resolviste
+
+Remoto `upstream` no configurado: Al correr los comandos de Git para traer el pipeline y `devops`, falló porque solo existía `origin`. Se resolvió agregando el remoto `upstream` apuntando al repositorio base/template, haciendo `git fetch upstream` y extrayendo `.github/workflows/deploy-agent.yaml` y `devops`.
+Motor de Docker apagado en Windows: Al intentar hacer `docker build`, apareció error al conectar con el daemon de Docker. Se resolvió iniciando Docker Desktop / verificando el servicio antes de construir la imagen.
+Consulta de autenticación en Container App (`{}`):** Al ejecutar `az containerapp auth show` sobre `ca-agent-chat-08`, devolvió `{}` porque la autenticación de Entra ID aún no estaba activa en la Container App; se verificaron los registros de app en Entra ID (`az ad app list`) para ubicar el `appId` correspondiente (`app-workshop-agent-chat` y `app-workshop-ci-team-08`).
+
+### Conclusión
+
+Desplegar el agente en una Container App separa claramente el código empaquetado en la imagen de contenedor frente a la configuración de entorno, secretos/endpoints e identidad administrada que gestiona Azure. Para consumir el agente ya desplegado desde la laptop basta autenticarse con `az login` y comunicarse por HTTP, mientras el agente usa su identidad administrada para conectarse a Foundry, AI Search, MCP y Cosmos DB sin depender de un archivo `.env` local.
