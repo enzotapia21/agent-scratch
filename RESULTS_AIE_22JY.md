@@ -177,6 +177,39 @@ No. `file_claim(CUS-1001, TRX-3002)` quedó en `pending_approval` y no se ejecut
 
 El comportamiento de `agent_framework` fue correcto y seguro en esta ejecución. Las acciones sensibles quedaron pendientes hasta la decisión del asesor: la aprobación creó `CLM-9001` y el rechazo impidió la ejecución. `CUS-9999` produjo el error de negocio esperado y `ABCD-1001` fue rechazado por el patrón de validación `CUS-\d{4}` antes de contactar al banco. También se confirmó que un fallo temporal de `get_transactions` puede recuperarse al reintentarlo. No se observaron ejecuciones no autorizadas ni alucinaciones.
 
+## Sesión 9 — Despliegue en Azure
+
+Equipo: `team-08`. Dominio: `fraud`.
+
+| Comprobación | Resultado |
+|---|---|
+| Tests en el contenedor (paso 3) | Local: **139 passed, 5 skipped** en 3.02 s. CI: job `test` completado con éxito, **139 passed, 5 skipped** en 4.31 s. |
+| Acción aprobada después de reiniciar `uvicorn` (paso 2, Cosmos DB) | Con `AGENT_URL=http://127.0.0.1:8000` y el log local indicando `Conversation store: Cosmos DB workshop/team-08`, se aprobó `file_claim` para `TRX-3001`. Resultado: reclamo `CLM-9003`, estado `registered`. La segunda acción para `TRX-3002` no se ejecutó porque ya había una aprobación pendiente. |
+| Imagen desplegada (`team-08/agent:<sha>`) | `team-08/agent:d1a882b7ed13df622a4c9859a8de6a4640fa8ab7`, publicada por el job `deploy`. |
+| Revisión activa y duración del job `deploy` | `ca-agent-chat-08--0000002` llegó a `RunningAtMaxScale`; job `deploy` completado con éxito en **2 min 59 s** ([logs del job](https://github.com/enzotapia21/agent-scratch/actions/runs/45494486284/job/138801697158)). |
+| `/health` del agente desplegado | Confirmado: dos respuestas `200 OK` en los logs (2026-11-25 01:10:39 y 01:11:28 UTC). Después, `dev/chat.py` también mostró `Agente en ...: ok` al consultar `/health` con autenticación. |
+| Respuesta con `Fuentes:` contra Azure (y su tiempo en ms) | Pregunta: «¿Cuál es el plazo para presentar un reclamo de fraude?». El agente respondió que el plazo es de 60 días calendario desde la fecha de la operación. Citó `fraud-and-claims-faq.md` (preguntas frecuentes sobre plazo de reclamo) y `claims-regulation.pdf` (sección 3.1, plazo para presentar). Tiempo total: **6193 ms** (primer texto: 6057 ms). |
+| Acción aprobada contra Azure, con su `resultado:` | Se aprobó `file_claim` para `TRX-3001` (cargo duplicado con `TRX-3002`). Resultado: reclamo `CLM-9001`, estado `registered`; apertura `2026-10-28`, respuesta prevista para `2026-11-27`. |
+
+### Qué pone Azure y qué pone la imagen
+
+Según la guía de despliegue, Azure/Terraform configura `AZURE_OPENAI_ENDPOINT`, `AZURE_CLIENT_ID`, `TEAM_ID`, `APPLICATIONINSIGHTS_CONNECTION_STRING`, `COSMOS_*`, `SEARCH_ENDPOINT`, `SEARCH_INDEX`, `MCP_URL`, `MCP_SCOPE` y `KEY_VAULT_URI`.
+
+La imagen configura `DOMAIN`, `FOUNDRY_AUTH_PROVIDER`, `KNOWLEDGE_BASE` y `AGENT_RUNTIME`. El workflow de CI/CD no añade variables de entorno a la Container App.
+
+### Problemas que encontraste y cómo los resolviste
+
+- Al inicio, el build local falló porque el Docker no estaba activo. Tras iniciar Docker Desktop, el build de la imagen `agent:test` terminó correctamente y los tests pasaron: 139 passed, 5 skipped.
+- Al reiniciar `uvicorn` local, los logs indicaron Azure AI Search (`idx-team-08`) y Cosmos DB (`workshop/team-08`) como servicios configurados. Estos mensajes no demuestran por sí solos que una acción haya sido aprobada o persistida.
+- La primera consulta `get_transactions` contra el servicio del banco falló temporalmente. Al reintentar, devolvió los movimientos `TRX-3001` y `TRX-3002`; el reclamo se registró después de la aprobación del asesor.
+- Al solicitar reclamos para ambos movimientos en el mismo turno, solo se pudo dejar una acción pendiente; `file_claim` para `TRX-3002` devolvió error hasta que se resolviera la aprobación de `TRX-3001`. No se registró un reclamo para `TRX-3002`.
+- Se registró `CLM-9001` para `TRX-3001` desde Azure y después `CLM-9003` para el mismo movimiento desde la instancia local. Como no se confirmó que ambos usen MCP aislados, verificar con el instructor si comparten backend y evitar más reclamos duplicados.
+- La autenticación local con Azure CLI devolvió inicialmente `AADSTS500011` porque el scope usaba un identificador incorrecto. Se consultó el `clientId` configurado en la Container App, se actualizó `AGENT_SCOPE` y `dev/chat.py` pudo solicitar el token y consultar `/health`, mostrando `ok`. La autenticación local quedó verificada para esa comprobación.
+
+### Conclusión
+
+Los tests locales y de CI pasaron (139 passed, 5 skipped en ambos casos). El pipeline publicó la imagen del commit `d1a882b7ed13df622a4c9859a8de6a4640fa8ab7`, desplegó la revisión `ca-agent-chat-08--0000002` y terminó correctamente; el job `deploy` duró 2 min 59 s. La revisión atendió solicitudes de salud y chat; los logs también muestran inicialización de Cosmos DB, Azure AI Search y MCP, y una respuesta exitosa del endpoint de embeddings. La autenticación local se corrigió y quedó verificada al consultar `/health`; el `uvicorn` local también reportó la configuración de Cosmos DB tras reiniciarse. La consulta de fraude contra Azure devolvió respuesta respaldada por dos fuentes en 6193 ms. Se aprobaron reclamos para `TRX-3001` desde Azure (`CLM-9001`) y desde la instancia local con Cosmos configurado (`CLM-9003`). No se registró un reclamo para `TRX-3002`.
+
 ## Sesión 10 — Trazas por turno y dashboard
 
 Equipo: `team-08`. App Insights: `appi-team-08`.
