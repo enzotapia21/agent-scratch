@@ -1,3 +1,35 @@
+## Semana 5 - Sesión 10 — Trazas por turno y dashboard
+
+Equipo: `team-08`. App Insights: `appi-team-08`. Los cuatro casos contra el agente desplegado (paso 8).
+
+| Caso | operation_Id | Latencia (ms) | Tokens de entrada | Tokens de salida | Tools | Error | Observaciones |
+|---|---|---:|---:|---:|---|---|---|
+| Saludo | `0ee50fddcb383e75b3124d9aa08cfef4` | 3286 | 1479 | 176 | — | No | Latencia baja; todo el tiempo corresponde al procesamiento del agente, sin dependencias externas. |
+| Consulta con retrieval | `153853b7d1b6940e00ce6d3b4a748762` | 8916 | 1656 | 963 | — | No | La consulta de conocimiento y las fuentes citadas explican el incremento de latencia frente al saludo. |
+| Llamada a tool | `c1f8b4bebb1f113c3fc955494f4f6ed1` | 20245 | 3962 | 2224 | `get_transactions:ok` | No | La tool respondió correctamente en 87 ms; la mayor parte del tiempo se consumió en la orquestación y elaboración de la respuesta. |
+| Error controlado | `c7baf7dea7729f446b376d6702bcce86` | 160 | *(no visible)* | *(no visible)* | — | Sí (`not_found`) | El error está claramente identificado en la traza por `success=False` y `error=not_found`; falló antes de invocar cualquier tool. |
+
+En **Observaciones**, una línea: lo que llamó la atención de la traza (qué se llevó el tiempo, la dependencia que falló, si el
+error permite ubicar el turno). En **Tools**, `—` si el turno no llamó ninguna.
+
+### Lo que dice el workbook
+
+| Panel | Lo que viste |
+|---|---|
+| Latencia p95 por intención | **sensitive_action** fue la intención más lenta (p95 = **30.128 ms**), seguida por **out_of_scope** (11.934 ms), **product_question** (8.469 ms) y **greeting** (3.094 ms). |
+| Tokens por turno | Se procesaron **16 turnos**, con **38,4 mil tokens de entrada** y **18,7 mil tokens de salida**; los flujos con retrieval y acciones sensibles concentraron el mayor consumo. |
+| Dónde se va el tiempo de un turno | La mayor parte del tiempo se consume en **Foundry - chat** (144.990 ms acumulados, p95 = 11.691 ms). Embeddings, AI Search y Cosmos DB aportan una fracción pequeña de la latencia total. |
+| Tools con error | Se observó **1 error en `get_transactions`** (estado `error`, p95 = 10.075 ms). Además, hubo un **chat.decision** con `error=not_found` (`operation_Id = c7baf7dea7729f446b376d6702bcce86`). |
+
+### ¿Qué optimizarías primero y por qué?
+
+Optimizaría primero los flujos sensitive_action, porque concentran la mayor latencia (p95 de 30 s) y representan los casos más críticos para el usuario. También revisaría los fallos de get_transactions, ya que cuando la dependencia falla añade más de 10 s de espera.
+
+### Conclusión
+
+El agente mostró un comportamiento estable: 16 turnos (acciones de compañeros), 1 error registrado y trazabilidad completa de tools y aprobaciones HITL. El principal consumo de tiempo se concentra en Foundry Chat y en las intenciones sensitive_action, mientras que las tools tienen tiempos de ejecución bajos cuando responden correctamente.
+
+
 ## Semana 5 -Sesión 9 — Despliegue en Azure
 
 Equipo: `team-08`. Dominio: `fraud`.
