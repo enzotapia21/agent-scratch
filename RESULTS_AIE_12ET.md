@@ -196,3 +196,34 @@ Consulta de autenticación en Container App (`{}`):** Al ejecutar `az containera
 ### Conclusión
 
 Desplegar el agente en una Container App separa claramente el código empaquetado en la imagen de contenedor frente a la configuración de entorno, secretos/endpoints e identidad administrada que gestiona Azure. Para consumir el agente ya desplegado desde la laptop basta autenticarse con `az login` y comunicarse por HTTP, mientras el agente usa su identidad administrada para conectarse a Foundry, AI Search, MCP y Cosmos DB sin depender de un archivo `.env` local.
+
+## Sesión 10 — Trazas por turno y dashboard
+
+Equipo: `team-08`. App Insights: `appi-team-08`. Los cuatro casos contra el agente desplegado (paso 8).
+
+| Caso | `operation_Id` | Latencia (ms) | Tokens de entrada | Tokens de salida | Tools | Error | Observaciones |
+|---|---|---|---|---|---|---|---|
+| Saludo | 2e144ea94f97a6808258bc14fcdf4cd5 | 19754 | 1511 | 117 | - | - | - |
+| Consulta con retrieval | 06c197b0ca3547fa6fee1c6d997b0ba2 | 12558 | 1942 | 864 | - | - | - |
+| Llamada a tool | 543fd69d5d434100432292d49fbd2d8d | 31407 | 4001 | 1764 | get_transactions:ok | - | - |
+| Error controlado | a76c7dd6afde217fd89b0287612b84c9 | 74 | - | - | - | Not Found({"error":"not_found","detail":"no hay una acción pendiente call-inventada en esta sesión"}) | - |
+
+En **Observaciones**, una línea: lo que llamó la atención de la traza (qué se llevó el tiempo, la dependencia que falló, si el
+error permite ubicar el turno). En **Tools**, `—` si el turno no llamó ninguna.
+
+### Lo que dice el workbook
+
+| Panel | Lo que viste |
+|---|---|
+| Latencia p95 por intención | sensitive_action: p95 de ~37.5 s (37,540 ms en 4 turnos); greeting: ~19.8 s (19,754 ms en 1 turno); product_question: ~12.6 s (12,558 ms en 1 turno). Las acciones sensibles son las que más tiempo toman. |
+| Tokens por turno | `sensitive_action`: prom. 3,851 in / 2,180 out (máx. 8,432 total); `product_question`: 1,942 in / 864 out (2,806 total); `greeting`: 1,511 in / 117 out (1,628 total). Las acciones sensibles consumen más del triple que un saludo. |
+| Dónde se va el tiempo de un turno | Casi todo se va en el modelo (LLM / razonamiento). Las tools tardan mucho menos: por ejemplo, en get_transactions el turno duró 31.4 s y la tool 4.2 s; en file_claim el turno duró 37.5 s y la tool solo 16 ms. |
+| Tools con error | Ninguna (-). Todas las tools ejecutadas (get_transactions y file_claim) terminaron con success = True y sin errores en la columna error (el único fallo registrado fue chat.decision por la prueba controlada 404). |
+
+### ¿Qué optimizarías primero y por qué?
+
+Optimizaría primero **las llamadas y el razonamiento del LLM (especialmente en `sensitive_action`)**, junto con **el tamaño del contexto / tokens de entrada**, porque ahí se concentra entre el 87 % y el 99.9 % del tiempo de un turno y la latencia p95 más alta (~37.5 s). Reducir pasos innecesarios del ciclo ReAct, acotar prompts/contexto o ajustar el modelo/parámetros tendrá mucho mayor impacto que optimizar herramientas que ya son rápidas (como `file_claim` en 16 ms) o que no presentan errores.
+
+### Conclusión
+
+El agente en Azure (`ca-agent-chat-08`) está operando y respondiendo correctamente con autenticación Entra ID, registrando trazas detalladas en Application Insights (`appi-team-08`) y manejando bien errores controlados (como el 404 de `call-inventada` en `/chat/actions`) sin fallos en las *tools*. El principal punto de mejora está en la latencia y el consumo de tokens de las acciones sensibles, donde se concentra el mayor tiempo y volumen de tokens por turno.
