@@ -176,3 +176,31 @@ No. `file_claim(CUS-1001, TRX-3002)` quedó en `pending_approval` y no se ejecut
 ### Conclusión
 
 El comportamiento de `agent_framework` fue correcto y seguro en esta ejecución. Las acciones sensibles quedaron pendientes hasta la decisión del asesor: la aprobación creó `CLM-9001` y el rechazo impidió la ejecución. `CUS-9999` produjo el error de negocio esperado y `ABCD-1001` fue rechazado por el patrón de validación `CUS-\d{4}` antes de contactar al banco. También se confirmó que un fallo temporal de `get_transactions` puede recuperarse al reintentarlo. No se observaron ejecuciones no autorizadas ni alucinaciones.
+
+## Sesión 10 — Trazas por turno y dashboard
+
+Equipo: `team-08`. App Insights: `appi-team-08`.
+
+| Caso | `operation_Id` | Latencia (ms) | Tokens de entrada | Tokens de salida | Tools | Error | Observaciones |
+|---|---|---:|---:|---:|---|---|---|
+| Saludo | `28e78da43f1620a30bce7c4cd9b2626e` | 9 778 | 1 473 | 108 | — | — | Sin tools; respuesta completa en 9 786 ms. |
+| Consulta con retrieval | `d3d7e01c44c8eb49900ed59cf7b2aa84` | 11 517 | 2 269 | 888 | — | — | Respondió sobre plazos y citó dos fuentes; primer texto a los 10 523 ms. |
+| Llamada a tool | `def8362ff309e30e2cd2f9b397b18cba` | 28 213 | 3 647 | 1 174 | `get_transactions` | Servicio del banco no responde | La dependencia falló tras 10 815 ms; el agente informó el problema y ofreció alternativas. |
+| Error controlado | `def8362ff309e30e2cd2f9b397b18cba` | 28 213 | 3 647 | 1 174 | `get_transactions` | Fallo comunicado al usuario | El agente ubicó el error de la tool y respondió sin presentar la consulta como exitosa. |
+
+### Lo que dice el workbook
+
+| Panel | Lo que viste |
+|---|---|
+| Latencia p95 por intención | `greeting`: 22 390 ms; `data_query`: 39 191 ms; `out_of_scope`: 11 934 ms; `product_question`: 17 592 ms; `sensitive_action`: 37 540 ms. Muestra reducida por intención. |
+| Tokens por turno | Saludo: 1 473/108; aclaración: 1 759/1 079; tool: 3 647/1 174; retrieval: 2 269/888 (entrada/salida). |
+| Dónde se va el tiempo de un turno | En el turno fallido, `get_transactions` tomó 10 815 de 28 213 ms (38,3%); las demás llamadas fallidas tomaron entre 10 075 y 14 092 ms. |
+| Tools con error | `get_transactions`: 4 fallos y 4 éxitos; `file_claim`: sin fallos. |
+
+### ¿Qué optimizarías primero y por qué?
+
+Optimizaría primero la disponibilidad y el timeout de `get_transactions`: falló cuatro veces y cada fallo tomó entre 10 y 14 segundos, prolongando el turno. Revisaría el servicio bancario/MCP y sus reintentos para reducir la espera y evitar fallos repetidos.
+
+### Conclusión
+
+Las trazas identifican cada turno mediante `operation_Id` y muestran latencias, consumo de tokens y errores de tools. El agente comunicó el fallo de `get_transactions` sin presentar la consulta como exitosa; la dependencia bancaria/MCP es lo primero que optimizaría.
